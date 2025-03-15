@@ -1,0 +1,148 @@
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { X, Building2, Package } from "lucide-react";
+import { Fornecedor } from "@/interfaces/fornecedor";
+import { mostrarToast } from "@/components/ToastPersonalizado";
+import { Skeleton } from "@/components/ui/skeleton";
+
+interface ProdutoFornecedoresModalProps {
+  aberto: boolean;
+  setAberto: (aberto: boolean) => void;
+  produtoId: number | null;
+}
+
+export function ProdutoFornecedoresModal({
+  aberto,
+  setAberto,
+  produtoId,
+}: ProdutoFornecedoresModalProps) {
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [nomeProduto, setNomeProduto] = useState("");
+
+  useEffect(() => {
+    if (aberto && produtoId) {
+      buscarInformacoesDoProduto();
+    }
+  }, [aberto, produtoId]);
+
+  const buscarInformacoesDoProduto = async () => {
+    if (!produtoId) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `http://localhost:3000/produto/${produtoId}`
+      );
+      if (!response.ok) throw new Error("Falha ao buscar fornecedores");
+      const data = await response.json();
+      setFornecedores(data.fornecedores);
+      setNomeProduto(data.nome);
+    } catch (error) {
+      console.error("Erro ao buscar fornecedores:", error);
+      mostrarToast({
+        mensagem: "Erro ao carregar fornecedores",
+        tipo: "erro",
+        posicao: "top-right",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={aberto} onOpenChange={setAberto}>
+      <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-lg [&>button]:hidden">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 p-6 text-white">
+          <div className="flex justify-between items-start">
+            <div>
+              <DialogTitle className="text-2xl font-bold mb-1">
+                Fornecedores do Produto
+              </DialogTitle>
+              <div className="flex items-center space-x-2 text-emerald-100">
+                <Package className="h-4 w-4" />
+                <span>{nomeProduto}</span>
+              </div>
+            </div>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogClose>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-3 bg-gray-50 rounded-lg">
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : fornecedores.length > 0 ? (
+            <div className="space-y-4">
+              {fornecedores.map((fornecedor) => (
+                <div
+                  key={fornecedor.id}
+                  className="flex items-center p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="bg-emerald-100 p-2 rounded-full mr-4">
+                    <Building2 className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">{fornecedor.nome}</p>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <span>{fornecedor.cnpj}</span>
+                      <span className="mx-2">•</span>
+                      <span>{fornecedor.telefone}</span>
+                    </div>
+                  </div>
+                  <div className="ml-2">
+                    {fornecedor.ativo ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Ativo
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        Inativo
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Building2 className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-500">
+                Este produto não possui fornecedores cadastrados
+              </p>
+            </div>
+          )}
+
+          <div className="mt-6 flex justify-end">
+            <Button
+              onClick={() => setAberto(false)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 cursor-pointer"
+            >
+              Fechar
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
